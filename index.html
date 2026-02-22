@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Share Your Trip</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Header -->
+  <header class="app-header">
+    <h1>{{ t('appTitle') }}</h1>
+    <div class="header-controls">
+      <button class="btn btn-sm btn-outline" @click="showTripsPanel = !showTripsPanel">
+        {{ t('myTrips') }}
+      </button>
+      <button class="btn btn-sm btn-success" @click="doSaveTrip">{{ t('saveTrip') }}</button>
+      <select :value="i18n.currentLang" @change="setLang($event.target.value)" style="width:auto; padding:0.3rem 0.5rem; font-size:0.8rem;">
+        <option value="fr">FR</option>
+        <option value="en">EN</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Saved trips panel -->
+  <div v-if="showTripsPanel" class="card">
+    <div class="card-title">{{ t('savedTrips') }}</div>
+    <button class="btn btn-sm btn-outline" style="margin-bottom:0.75rem" @click="doNewTrip">+ {{ t('newTrip') }}</button>
+    <div v-if="savedTrips.length === 0" class="info-text">{{ t('noSavedTrips') }}</div>
+    <div v-for="st in savedTrips" :key="st.id" class="trip-list-item">
+      <div class="trip-info">
+        <div class="trip-name">{{ st.name || t('untitled') }}</div>
+        <div class="trip-date">{{ st.date }} &middot; {{ st.participants?.length || 0 }} {{ t('participants').toLowerCase() }}</div>
+      </div>
+      <div style="display:flex; gap:0.35rem;">
+        <button class="btn btn-sm btn-primary" @click="doLoadTrip(st)">{{ t('loadTrip') }}</button>
+        <button class="btn btn-sm btn-danger" @click="doDeleteTrip(st.id)">{{ t('deleteTrip') }}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stepper -->
+  <div class="stepper no-print">
+    <div
+      v-for="(stepInfo, idx) in [
+        { num: 1, key: 'stepSetup' },
+        { num: 2, key: 'stepLegs' },
+        { num: 3, key: 'stepExpenses' },
+        { num: 4, key: 'stepSummary' }
+      ]"
+      :key="stepInfo.num"
+      class="stepper-step"
+      :class="{ active: currentStep === stepInfo.num, completed: currentStep > stepInfo.num }"
+      @click="goToStep(stepInfo.num)"
+    >
+      <span class="step-number">{{ stepInfo.num }}</span>
+      {{ t(stepInfo.key) }}
+    </div>
+  </div>
+
+  <!-- ===================== STEP 1: Setup ===================== -->
+  <div v-show="currentStep === 1">
+    <div class="card">
+      <div class="card-title">{{ t('stepSetup') }}</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>{{ t('tripName') }}</label>
+          <input type="text" v-model="trip.name" :placeholder="t('tripNamePlaceholder')">
+        </div>
+        <div class="form-group-sm">
+          <label>{{ t('tripDate') }}</label>
+          <input type="date" v-model="trip.date" style="width:160px">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">{{ t('participants') }}</div>
+
+      <div class="form-row" style="margin-bottom:1rem">
+        <div class="form-group">
+          <input
+            type="text"
+            v-model="newParticipantName"
+            :placeholder="t('participantName')"
+            @keyup.enter="addParticipant"
+          >
+        </div>
+        <button class="btn btn-primary" @click="addParticipant" :disabled="!newParticipantName.trim()">
+          + {{ t('addParticipant') }}
+        </button>
+      </div>
+
+      <div v-if="trip.participants.length < 2" class="info-text" style="margin-bottom:0.75rem">
+        {{ t('minParticipants') }}
+      </div>
+
+      <div v-for="p in trip.participants" :key="p.id" class="participant-row">
+        <span class="name">{{ p.name }}</span>
+        <span
+          class="role-badge"
+          :class="p.role"
+          style="cursor:pointer"
+          @click="cycleRole(p)"
+          :title="t('role')"
+        >
+          {{ t(p.role === 'leader' ? 'roleLeader' : p.role === 'deputy' ? 'roleDeputy' : 'roleNormal') }}
+        </span>
+        <button class="btn btn-ghost btn-sm" @click="removeParticipant(p.id)" :title="t('remove')">✕</button>
+      </div>
+    </div>
+
+    <!-- API Key config -->
+    <div class="card">
+      <div class="card-title">{{ t('apiKey') }}</div>
+      <div v-if="hasApiKey" class="api-banner configured">
+        <span>{{ t('apiKeyConfigured') }}</span>
+        <button class="btn btn-sm btn-ghost" @click="removeApiKey">{{ t('apiKeyRemove') }}</button>
+      </div>
+      <div v-else>
+        <div class="api-banner missing">{{ t('noApiKey') }}</div>
+        <div class="form-row">
+          <div class="form-group">
+            <input type="text" v-model="apiKeyInput" :placeholder="t('apiKeyPlaceholder')">
+          </div>
+          <button class="btn btn-primary btn-sm" @click="saveApiKey" :disabled="!apiKeyInput.trim()">{{ t('apiKeySave') }}</button>
+        </div>
+        <div class="info-text">{{ t('apiKeyHelp') }}</div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <span></span>
+      <button class="btn btn-primary btn-lg" @click="goToStep(2)" :disabled="!canProceed(1)">
+        {{ t('next') }} →
+      </button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 2: Trip Legs ===================== -->
+  <div v-show="currentStep === 2">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0">{{ t('tripLegs') }}</div>
+        <button class="btn btn-primary btn-sm" @click="addLeg">+ {{ t('addLeg') }}</button>
+      </div>
+
+      <div v-if="trip.legs.length === 0" class="info-text">{{ t('noLegs') }}</div>
+
+      <div v-for="(leg, legIdx) in trip.legs" :key="leg.id" class="leg-card">
+        <div class="leg-header">
+          <span class="leg-title">{{ t('leg') }} {{ legIdx + 1 }}<template v-if="leg.fromText || leg.toText"> — {{ leg.fromText || '?' }} → {{ leg.toText || '?' }}</template></span>
+          <button class="btn btn-ghost btn-sm" @click="removeLeg(leg.id)">{{ t('removeLeg') }} ✕</button>
+        </div>
+
+        <!-- From / To -->
+        <div class="form-row">
+          <div class="form-group autocomplete-wrapper">
+            <label>{{ t('from') }}</label>
+            <input
+              type="text"
+              v-model="leg.fromText"
+              :placeholder="hasApiKey ? t('searchLocation') : t('from')"
+              @input="onLocationInput(leg, 'from')"
+              @blur="dismissAutocomplete"
+            >
+            <div v-if="autocompleteField?.legId === leg.id && autocompleteField?.field === 'from' && autocompleteResults.length" class="autocomplete-list">
+              <div v-for="r in autocompleteResults" :key="r.label" class="autocomplete-item" @mousedown="selectLocation(leg, 'from', r)">
+                {{ r.label }}
+              </div>
+            </div>
+          </div>
+          <div class="form-group autocomplete-wrapper">
+            <label>{{ t('to') }}</label>
+            <input
+              type="text"
+              v-model="leg.toText"
+              :placeholder="hasApiKey ? t('searchLocation') : t('to')"
+              @input="onLocationInput(leg, 'to')"
+              @blur="dismissAutocomplete"
+            >
+            <div v-if="autocompleteField?.legId === leg.id && autocompleteField?.field === 'to' && autocompleteResults.length" class="autocomplete-list">
+              <div v-for="r in autocompleteResults" :key="r.label" class="autocomplete-item" @mousedown="selectLocation(leg, 'to', r)">
+                {{ r.label }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group-sm">
+            <label>{{ t('kmOneWay') }}</label>
+            <input type="number" v-model.number="leg.kmOneWay" min="0" step="1">
+          </div>
+          <div class="form-group-sm">
+            <label>{{ t('kmTotal') }}</label>
+            <input type="number" :value="legKmTotal(leg)" disabled style="background:#f1f5f9">
+          </div>
+          <div v-if="isFetchingRoute === leg.id" class="info-text" style="align-self:center">
+            {{ t('fetchingRoute') }}
+          </div>
+        </div>
+
+        <!-- Cars -->
+        <div style="margin-top:1rem">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <label style="margin-bottom:0; font-weight:600;">{{ t('cars') }}</label>
+            <button class="btn btn-outline btn-sm" @click="addCar(leg)">+ {{ t('addCar') }}</button>
+          </div>
+
+          <div v-for="(car, carIdx) in leg.cars" :key="car.id" class="car-card">
+            <div class="car-header">
+              <span style="font-weight:500; font-size:0.9rem;">{{ t('cars') }} {{ carIdx + 1 }}<template v-if="car.driverId"> — {{ participantName(car.driverId) }}</template></span>
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <span class="cost-display" v-if="leg.kmOneWay > 0">
+                  {{ t('carCost') }}: {{ carCost(car, leg).toFixed(2) }} CHF
+                </span>
+                <button class="btn btn-ghost btn-sm" @click="removeCar(leg, car.id)">✕</button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>{{ t('driver') }}</label>
+                <select v-model="car.driverId">
+                  <option value="">{{ t('selectDriver') }}</option>
+                  <option v-for="p in trip.participants" :key="p.id" :value="p.id">{{ p.name }}</option>
+                </select>
+              </div>
+              <div class="form-group-sm">
+                <div class="toggle-row">
+                  <div class="toggle" :class="{ active: car.is6Plus }" @click="toggleIs6Plus(car)"></div>
+                  <span>{{ t('is6Plus') }}</span>
+                </div>
+              </div>
+              <div class="form-group-sm">
+                <label>{{ t('ratePerKm') }}</label>
+                <input
+                  type="number"
+                  :value="car.is6Plus ? car.rate6Plus : car.rateNormal"
+                  @input="car.is6Plus ? (car.rate6Plus = parseFloat($event.target.value) || 0) : (car.rateNormal = parseFloat($event.target.value) || 0)"
+                  min="0" step="0.05"
+                >
+              </div>
+            </div>
+
+            <div style="margin-top:0.5rem">
+              <label>{{ t('passengers') }}</label>
+              <div class="checkbox-group">
+                <label
+                  v-for="p in getAvailablePassengers(leg, car)"
+                  :key="p.id"
+                  class="checkbox-label"
+                  :class="{ checked: car.passengerIds.includes(p.id) }"
+                  @click="togglePassenger(car, p.id)"
+                >
+                  <input type="checkbox" :checked="car.passengerIds.includes(p.id)">
+                  {{ p.name }}
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Unassigned warning -->
+          <div v-if="leg.cars.length > 0 && getUnassignedParticipants(leg).length > 0" style="margin-top:0.5rem">
+            <div class="info-text" style="color:var(--warning)">
+              {{ t('warningUnassigned') }}:
+              {{ getUnassignedParticipants(leg).map(p => p.name).join(', ') }}
+            </div>
+          </div>
+
+          <!-- Leg total cost -->
+          <div v-if="leg.cars.length > 0 && leg.kmOneWay > 0" class="totals-bar" style="margin-top:0.75rem">
+            <span>
+              <span class="total-label">{{ t('legCost') }}:</span>
+              <span class="total-value"> {{ legTotalCost(leg).toFixed(2) }} CHF</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline btn-lg" @click="goToStep(1)">← {{ t('previous') }}</button>
+      <button class="btn btn-primary btn-lg" @click="goToStep(3)">{{ t('next') }} →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 3: Expenses ===================== -->
+  <div v-show="currentStep === 3">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div class="card-title" style="margin-bottom:0">{{ t('expenses') }}</div>
+        <button class="btn btn-primary btn-sm" @click="addExpense">+ {{ t('addExpense') }}</button>
+      </div>
+
+      <div v-if="trip.expenses.length === 0" class="info-text">{{ t('noExpenses') }}</div>
+
+      <div v-for="(expense, expIdx) in trip.expenses" :key="expense.id" class="expense-card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+          <span style="font-weight:500;">{{ t('expenses') }} {{ expIdx + 1 }}</span>
+          <button class="btn btn-ghost btn-sm" @click="removeExpense(expense.id)">✕</button>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>{{ t('expenseDescription') }}</label>
+            <input type="text" v-model="expense.description" :placeholder="t('expenseDescPlaceholder')">
+          </div>
+          <div class="form-group-sm">
+            <label>{{ t('amount') }}</label>
+            <input type="number" v-model.number="expense.amount" min="0" step="0.05">
+          </div>
+          <div class="form-group">
+            <label>{{ t('paidBy') }}</label>
+            <select v-model="expense.paidById">
+              <option value="">{{ t('selectPayer') }}</option>
+              <option v-for="p in trip.participants" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top:0.5rem">
+          <label>
+            {{ t('splitAmong') }}
+            <span v-if="expense.amount > 0 && expense.splitAmongIds.length > 0" class="cost-display" style="margin-left:0.5rem">
+              {{ expensePerPerson(expense).toFixed(2) }} CHF {{ t('perPerson') }}
+            </span>
+          </label>
+          <div style="margin-bottom:0.35rem; display:flex; gap:0.35rem;">
+            <button class="btn btn-sm btn-outline" @click="selectAllForExpense(expense)">{{ t('selectAll') }}</button>
+            <button class="btn btn-sm btn-outline" @click="selectNoneForExpense(expense)">{{ t('selectNone') }}</button>
+          </div>
+          <div class="checkbox-group">
+            <label
+              v-for="p in trip.participants"
+              :key="p.id"
+              class="checkbox-label"
+              :class="{ checked: expense.splitAmongIds.includes(p.id) }"
+              @click="toggleExpenseParticipant(expense, p.id)"
+            >
+              <input type="checkbox" :checked="expense.splitAmongIds.includes(p.id)">
+              {{ p.name }}
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline btn-lg" @click="goToStep(2)">← {{ t('previous') }}</button>
+      <button class="btn btn-primary btn-lg" @click="goToStep(4)">{{ t('next') }} →</button>
+    </div>
+  </div>
+
+  <!-- ===================== STEP 4: Summary ===================== -->
+  <div v-show="currentStep === 4">
+    <div class="card">
+      <div class="card-title">{{ t('summary') }} — {{ trip.name || t('untitled') }} ({{ trip.date }})</div>
+
+      <div style="overflow-x:auto">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>{{ t('person') }}</th>
+              <th>{{ t('role') }}</th>
+              <th class="number">{{ t('transportShare') }}</th>
+              <th class="number">{{ t('expenseShare') }}</th>
+              <th class="number">{{ t('totalOwed') }}</th>
+              <th class="number">{{ t('totalPaid') }}</th>
+              <th class="number">{{ t('balance') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="p in trip.participants" :key="p.id">
+              <td><strong>{{ p.name }}</strong></td>
+              <td>
+                <span class="role-badge" :class="p.role">
+                  {{ t(p.role === 'leader' ? 'roleLeader' : p.role === 'deputy' ? 'roleDeputy' : 'roleNormal') }}
+                </span>
+              </td>
+              <td class="number">
+                <template v-if="summaryResults[p.id]?.isExempt">
+                  <span class="info-text">{{ t('exemptTransport') }}</span>
+                </template>
+                <template v-else>
+                  {{ summaryResults[p.id]?.transportShare.toFixed(2) }} CHF
+                </template>
+              </td>
+              <td class="number">{{ summaryResults[p.id]?.expenseShare.toFixed(2) }} CHF</td>
+              <td class="number">{{ summaryResults[p.id]?.totalOwed.toFixed(2) }} CHF</td>
+              <td class="number">{{ summaryResults[p.id]?.totalPaid.toFixed(2) }} CHF</td>
+              <td class="number" :class="{
+                'balance-positive': summaryResults[p.id]?.balance > 0.01,
+                'balance-negative': summaryResults[p.id]?.balance < -0.01,
+                'balance-zero': Math.abs(summaryResults[p.id]?.balance || 0) <= 0.01
+              }">
+                <template v-if="Math.abs(summaryResults[p.id]?.balance || 0) <= 0.01">
+                  {{ t('settled') }}
+                </template>
+                <template v-else-if="summaryResults[p.id]?.balance > 0">
+                  {{ t('owes') }} {{ summaryResults[p.id]?.balance.toFixed(2) }} CHF
+                </template>
+                <template v-else>
+                  {{ t('getsBack') }} {{ Math.abs(summaryResults[p.id]?.balance).toFixed(2) }} CHF
+                </template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="totals-bar">
+        <span>
+          <span class="total-label">{{ t('totalTransport') }}:</span>
+          <span class="total-value"> {{ totalTransport.toFixed(2) }} CHF</span>
+        </span>
+        <span>
+          <span class="total-label">{{ t('totalExpenses') }}:</span>
+          <span class="total-value"> {{ totalExpenses.toFixed(2) }} CHF</span>
+        </span>
+        <span>
+          <span class="total-label">Total:</span>
+          <span class="total-value"> {{ (totalTransport + totalExpenses).toFixed(2) }} CHF</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Transfers -->
+    <div class="card" v-if="transfers.length > 0">
+      <div class="card-title">{{ t('suggestedTransfers') }}</div>
+      <div v-for="tr in transfers" :key="tr.fromId + tr.toId" class="transfer-item">
+        <strong>{{ tr.fromName }}</strong>
+        <span>{{ t('pays') }}</span>
+        <span class="transfer-amount">{{ tr.amount.toFixed(2) }} CHF</span>
+        <span>{{ t('to2') }}</span>
+        <strong>{{ tr.toName }}</strong>
+      </div>
+    </div>
+
+    <!-- Export buttons -->
+    <div class="card no-print">
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+        <button class="btn btn-primary" @click="doExportCsv">{{ t('exportCsv') }}</button>
+        <button class="btn btn-outline" @click="doPrint">{{ t('printPdf') }}</button>
+      </div>
+    </div>
+
+    <div class="nav-buttons">
+      <button class="btn btn-outline btn-lg" @click="goToStep(3)">← {{ t('previous') }}</button>
+      <span></span>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div v-if="toastMessage" class="toast">{{ toastMessage }}</div>
+
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
