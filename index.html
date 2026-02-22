@@ -257,7 +257,7 @@
                   :key="p.id"
                   class="checkbox-label"
                   :class="{ checked: car.passengerIds.includes(p.id) }"
-                  @click="togglePassenger(car, p.id)"
+                  @click.prevent="togglePassenger(car, p.id)"
                 >
                   <input type="checkbox" :checked="car.passengerIds.includes(p.id)">
                   {{ p.name }}
@@ -342,7 +342,7 @@
               :key="p.id"
               class="checkbox-label"
               :class="{ checked: expense.splitAmongIds.includes(p.id) }"
-              @click="toggleExpenseParticipant(expense, p.id)"
+              @click.prevent="toggleExpenseParticipant(expense, p.id)"
             >
               <input type="checkbox" :checked="expense.splitAmongIds.includes(p.id)">
               {{ p.name }}
