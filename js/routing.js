@@ -1,9 +1,11 @@
+import { config } from './config.js';
+
 const ORS_BASE = 'https://api.openrouteservice.org';
 
 function createRoutingService() {
   return {
     getApiKey() {
-      return localStorage.getItem('syt-ors-key') || '';
+      return localStorage.getItem('syt-ors-key') || config.ORS_API_KEY || '';
     },
 
     setApiKey(key) {
