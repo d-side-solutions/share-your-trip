@@ -302,11 +302,16 @@ const app = createApp({
     async function doExportImage() {
       const el = document.getElementById('summary-capture');
       if (!el) return;
+
+      el.classList.add('export-mode');
+      await nextTick();
+
       try {
         const canvas = await html2canvas(el, {
           backgroundColor: '#f8fafc',
           scale: 2,
           useCORS: true,
+          width: 400,
         });
         canvas.toBlob((blob) => {
           if (!blob) return;
@@ -319,6 +324,8 @@ const app = createApp({
         }, 'image/png');
       } catch (err) {
         console.error('Image export failed:', err);
+      } finally {
+        el.classList.remove('export-mode');
       }
     }
 

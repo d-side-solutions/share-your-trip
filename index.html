@@ -430,6 +430,43 @@
           </table>
         </div>
 
+        <!-- Card-based layout for mobile-friendly image export -->
+        <div class="summary-cards">
+          <div v-for="p in trip.participants" :key="'card-'+p.id" class="summary-card-item">
+            <div class="card-item-header">
+              <span class="name">{{ p.name }}</span>
+              <span class="role-badge" :class="p.role">
+                {{ t(p.role === 'leader' ? 'roleLeader' : p.role === 'deputy' ? 'roleDeputy' : 'roleNormal') }}
+              </span>
+            </div>
+            <div class="card-item-rows">
+              <span class="row-label">{{ t('transportShare') }}</span>
+              <span class="row-value">
+                <template v-if="summaryResults[p.id]?.exemptTransport">{{ t('exemptTransport') }}</template>
+                <template v-else>{{ summaryResults[p.id]?.transportShare.toFixed(2) }} CHF</template>
+              </span>
+              <span class="row-label">{{ t('expenseShare') }}</span>
+              <span class="row-value">
+                <template v-if="summaryResults[p.id]?.exemptExpenses">{{ t('exemptExpenses') }}</template>
+                <template v-else>{{ summaryResults[p.id]?.expenseShare.toFixed(2) }} CHF</template>
+              </span>
+              <span class="row-label">{{ t('totalOwed') }}</span>
+              <span class="row-value">{{ summaryResults[p.id]?.totalOwed.toFixed(2) }} CHF</span>
+              <span class="row-label">{{ t('totalPaid') }}</span>
+              <span class="row-value">{{ summaryResults[p.id]?.totalPaid.toFixed(2) }} CHF</span>
+            </div>
+            <div class="card-item-balance" :class="{
+              'balance-positive': summaryResults[p.id]?.balance > 0.01,
+              'balance-negative': summaryResults[p.id]?.balance < -0.01,
+              'balance-zero': Math.abs(summaryResults[p.id]?.balance || 0) <= 0.01
+            }">
+              <template v-if="Math.abs(summaryResults[p.id]?.balance || 0) <= 0.01">{{ t('settled') }}</template>
+              <template v-else-if="summaryResults[p.id]?.balance > 0">{{ t('owes') }} {{ summaryResults[p.id]?.balance.toFixed(2) }} CHF</template>
+              <template v-else>{{ t('getsBack') }} {{ Math.abs(summaryResults[p.id]?.balance).toFixed(2) }} CHF</template>
+            </div>
+          </div>
+        </div>
+
         <div class="totals-bar">
           <span>
             <span class="total-label">{{ t('totalTransport') }}:</span>
@@ -462,8 +499,8 @@
     <!-- Export buttons -->
     <div class="card">
       <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-        <button class="btn btn-primary" @click="doExportCsv">{{ t('exportCsv') }}</button>
         <button class="btn btn-primary" @click="doExportImage">{{ t('exportImage') }}</button>
+        <button class="btn btn-primary" @click="doExportCsv">{{ t('exportCsv') }}</button>
       </div>
     </div>
 

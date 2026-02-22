@@ -482,6 +482,77 @@ select {
 /* Info text */
 .info-text { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
 
+/* Export image mode: card-based layout for mobile-friendly screenshots */
+.export-mode {
+  width: 400px;
+  font-size: 0.85rem;
+}
+
+.export-mode .summary-table { display: none; }
+
+.export-mode .summary-cards { display: block !important; }
+
+.summary-cards {
+  display: none;
+}
+
+.summary-card-item {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: white;
+}
+
+.summary-card-item .card-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.summary-card-item .card-item-header .name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.summary-card-item .card-item-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.3rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.summary-card-item .card-item-rows .row-label {
+  color: var(--text-muted);
+}
+
+.summary-card-item .card-item-rows .row-value {
+  text-align: right;
+  font-weight: 500;
+}
+
+.summary-card-item .card-item-balance {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.export-mode .totals-bar {
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.export-mode .transfer-item {
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
 /* Cost display inline */
 .cost-display {
   font-size: 0.85rem;
