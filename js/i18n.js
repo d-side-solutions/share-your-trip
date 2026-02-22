@@ -91,6 +91,9 @@ const translations = {
     totalTransport: 'Total transport',
     totalExpenses: 'Total dépenses',
     exemptTransport: 'Exempté de transport',
+    exemptExpenses: 'Exempté de dépenses',
+    exemptTransportToggle: 'Exempté transport',
+    exemptExpensesToggle: 'Exempté dépenses',
 
     // Storage
     myTrips: 'Mes courses',
@@ -201,6 +204,9 @@ const translations = {
     totalTransport: 'Total transport',
     totalExpenses: 'Total expenses',
     exemptTransport: 'Exempt from transport',
+    exemptExpenses: 'Exempt from expenses',
+    exemptTransportToggle: 'Exempt transport',
+    exemptExpensesToggle: 'Exempt expenses',
 
     myTrips: 'My trips',
     saveTrip: 'Save',
