@@ -433,13 +433,6 @@ label {
   .nav-buttons .btn { width: 100%; justify-content: center; }
 }
 
-/* Print styles */
-@media print {
-  .app-header, .stepper, .nav-buttons, .btn, .no-print { display: none !important; }
-  .card { box-shadow: none; border: 1px solid #ccc; }
-  body { background: white; }
-}
-
 /* Select dropdown */
 .select-wrapper { position: relative; }
 

@@ -73,11 +73,7 @@ function exportCsv(summaryResults, trip, t) {
   URL.revokeObjectURL(url);
 }
 
-function printPdf() {
-  window.print();
-}
-
 export {
   loadTrips, saveTrips, saveCurrentTrip, loadCurrentTrip,
-  saveTripToList, deleteTripFromList, exportCsv, printPdf
+  saveTripToList, deleteTripFromList, exportCsv
 };

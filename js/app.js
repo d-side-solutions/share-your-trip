@@ -3,7 +3,7 @@ import { createRoutingService } from './routing.js';
 import { computeSummary, computeTransfers } from './calculator.js';
 import {
   saveCurrentTrip, loadCurrentTrip, saveTripToList,
-  loadTrips, deleteTripFromList, exportCsv, printPdf
+  loadTrips, deleteTripFromList, exportCsv
 } from './storage.js';
 
 const { createApp, ref, reactive, computed, watch, nextTick, onMounted } = Vue;
@@ -299,8 +299,27 @@ const app = createApp({
       exportCsv(summaryResults.value, trip, t);
     }
 
-    function doPrint() {
-      printPdf();
+    async function doExportImage() {
+      const el = document.getElementById('summary-capture');
+      if (!el) return;
+      try {
+        const canvas = await html2canvas(el, {
+          backgroundColor: '#f8fafc',
+          scale: 2,
+          useCORS: true,
+        });
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${(trip.name || 'trip').replace(/\s+/g, '_')}_summary.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }, 'image/png');
+      } catch (err) {
+        console.error('Image export failed:', err);
+      }
     }
 
     // --- Storage ---
@@ -334,6 +353,7 @@ const app = createApp({
     const apiKeyInput = ref('');
     const apiKeyPresent = ref(routing.hasApiKey());
     const hasApiKey = computed(() => apiKeyPresent.value);
+    const configHasApiKey = routing.hasConfigKey();
 
     function saveApiKey() {
       routing.setApiKey(apiKeyInput.value);
@@ -377,10 +397,10 @@ const app = createApp({
       addExpense, removeExpense, toggleExpenseParticipant,
       selectAllForExpense, selectNoneForExpense, expensePerPerson,
       summaryResults, transfers, totalTransport, totalExpenses,
-      doExportCsv, doPrint,
+      doExportCsv, doExportImage,
       savedTrips, showTripsPanel, doSaveTrip, doLoadTrip, doDeleteTrip, doNewTrip,
       toastMessage,
-      apiKeyInput, hasApiKey, saveApiKey, removeApiKey,
+      apiKeyInput, hasApiKey, configHasApiKey, saveApiKey, removeApiKey,
       canProceed, goToStep, setLang, participantName,
     };
   }

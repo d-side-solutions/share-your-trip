@@ -20,6 +20,10 @@ function createRoutingService() {
       return !!this.getApiKey();
     },
 
+    hasConfigKey() {
+      return !!config.ORS_API_KEY;
+    },
+
     async geocode(query) {
       const key = this.getApiKey();
       if (!key || !query || query.length < 3) return [];
