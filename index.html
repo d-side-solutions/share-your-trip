@@ -111,6 +111,12 @@
         >
           {{ t(p.role === 'leader' ? 'roleLeader' : p.role === 'deputy' ? 'roleDeputy' : 'roleNormal') }}
         </span>
+        <label v-if="p.role === 'leader' || p.role === 'deputy'" class="checkbox-label btn-sm" :class="{ checked: p.exemptTransport }" style="font-size:0.75rem">
+          <input type="checkbox" v-model="p.exemptTransport"> {{ t('exemptTransportToggle') }}
+        </label>
+        <label v-if="p.role === 'leader' || p.role === 'deputy'" class="checkbox-label btn-sm" :class="{ checked: p.exemptExpenses }" style="font-size:0.75rem">
+          <input type="checkbox" v-model="p.exemptExpenses"> {{ t('exemptExpensesToggle') }}
+        </label>
         <button class="btn btn-ghost btn-sm" @click="removeParticipant(p.id)" :title="t('remove')">✕</button>
       </div>
     </div>
@@ -385,14 +391,21 @@
                 </span>
               </td>
               <td class="number">
-                <template v-if="summaryResults[p.id]?.isExempt">
+                <template v-if="summaryResults[p.id]?.exemptTransport">
                   <span class="info-text">{{ t('exemptTransport') }}</span>
                 </template>
                 <template v-else>
                   {{ summaryResults[p.id]?.transportShare.toFixed(2) }} CHF
                 </template>
               </td>
-              <td class="number">{{ summaryResults[p.id]?.expenseShare.toFixed(2) }} CHF</td>
+              <td class="number">
+                <template v-if="summaryResults[p.id]?.exemptExpenses">
+                  <span class="info-text">{{ t('exemptExpenses') }}</span>
+                </template>
+                <template v-else>
+                  {{ summaryResults[p.id]?.expenseShare.toFixed(2) }} CHF
+                </template>
+              </td>
               <td class="number">{{ summaryResults[p.id]?.totalOwed.toFixed(2) }} CHF</td>
               <td class="number">{{ summaryResults[p.id]?.totalPaid.toFixed(2) }} CHF</td>
               <td class="number" :class="{

@@ -10,7 +10,8 @@ function computeSummary(trip) {
       totalOwed: 0,
       totalPaid: 0,
       balance: 0,
-      isExempt: p.role === 'leader' || p.role === 'deputy',
+      exemptTransport: !!p.exemptTransport,
+      exemptExpenses: !!p.exemptExpenses,
     };
   }
 
@@ -37,7 +38,7 @@ function computeSummary(trip) {
 
     const payingIds = [...allParticipantIds].filter(id => {
       const r = results[id];
-      return r && !r.isExempt;
+      return r && !r.exemptTransport;
     });
 
     if (payingIds.length > 0 && totalLegCost > 0) {
@@ -53,13 +54,14 @@ function computeSummary(trip) {
       results[expense.paidById].totalPaid += expense.amount || 0;
     }
 
-    const splitIds = expense.splitAmongIds || [];
+    const splitIds = (expense.splitAmongIds || []).filter(id => {
+      const r = results[id];
+      return r && !r.exemptExpenses;
+    });
     if (splitIds.length > 0 && expense.amount > 0) {
       const perPerson = expense.amount / splitIds.length;
       for (const id of splitIds) {
-        if (results[id]) {
-          results[id].expenseShare += perPerson;
-        }
+        results[id].expenseShare += perPerson;
       }
     }
   }

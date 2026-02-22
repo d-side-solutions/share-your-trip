@@ -24,7 +24,7 @@ function createEmptyTrip() {
 }
 
 function createParticipant(name = '') {
-  return { id: generateId(), name, role: 'normal' };
+  return { id: generateId(), name, role: 'normal', exemptTransport: false, exemptExpenses: false };
 }
 
 function createLeg() {
@@ -117,6 +117,12 @@ const app = createApp({
       const roles = ['normal', 'leader', 'deputy'];
       const idx = roles.indexOf(participant.role);
       participant.role = roles[(idx + 1) % roles.length];
+      if (participant.role === 'leader' || participant.role === 'deputy') {
+        participant.exemptTransport = true;
+      } else {
+        participant.exemptTransport = false;
+        participant.exemptExpenses = false;
+      }
     }
 
     // --- STEP 2: Trip Legs ---
@@ -137,26 +143,11 @@ const app = createApp({
     }
 
     function togglePassenger(car, participantId) {
-      // #region agent log
-      const _logEntry1 = JSON.stringify({sessionId:'d845e5',location:'app.js:togglePassenger',message:'togglePassenger called',data:{participantId,before:[...car.passengerIds]},timestamp:Date.now(),hypothesisId:'A'});
-      console.log('[DEBUG-d845e5]', _logEntry1);
-      fetch('http://127.0.0.1:7939/ingest/342e24e0-ef37-424b-b68b-fcba0b8f6186',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d845e5'},body:_logEntry1}).catch(()=>{});
-      // #endregion
       const idx = car.passengerIds.indexOf(participantId);
       if (idx >= 0) {
         car.passengerIds.splice(idx, 1);
-        // #region agent log
-        const _logEntry2 = JSON.stringify({sessionId:'d845e5',location:'app.js:togglePassenger:remove',message:'removed passenger',data:{participantId,after:[...car.passengerIds]},timestamp:Date.now(),hypothesisId:'A'});
-        console.log('[DEBUG-d845e5]', _logEntry2);
-        fetch('http://127.0.0.1:7939/ingest/342e24e0-ef37-424b-b68b-fcba0b8f6186',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d845e5'},body:_logEntry2}).catch(()=>{});
-        // #endregion
       } else {
         car.passengerIds.push(participantId);
-        // #region agent log
-        const _logEntry3 = JSON.stringify({sessionId:'d845e5',location:'app.js:togglePassenger:add',message:'added passenger',data:{participantId,after:[...car.passengerIds]},timestamp:Date.now(),hypothesisId:'A'});
-        console.log('[DEBUG-d845e5]', _logEntry3);
-        fetch('http://127.0.0.1:7939/ingest/342e24e0-ef37-424b-b68b-fcba0b8f6186',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d845e5'},body:_logEntry3}).catch(()=>{});
-        // #endregion
       }
     }
 
@@ -171,13 +162,9 @@ const app = createApp({
         if (c.driverId) assignedInOtherCars.add(c.driverId);
         for (const pid of c.passengerIds) assignedInOtherCars.add(pid);
       }
-      const result = trip.participants.filter(p =>
+      return trip.participants.filter(p =>
         p.id !== car.driverId && !assignedInOtherCars.has(p.id)
       );
-      // #region agent log
-      fetch('http://127.0.0.1:7939/ingest/342e24e0-ef37-424b-b68b-fcba0b8f6186',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'d845e5'},body:JSON.stringify({sessionId:'d845e5',location:'app.js:getAvailablePassengers',message:'available passengers',data:{carId:car.id,driverId:car.driverId,resultCount:result.length,resultNames:result.map(p=>p.name)},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
-      return result;
     }
 
     function getUnassignedParticipants(leg) {
