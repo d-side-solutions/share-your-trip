@@ -299,6 +299,100 @@ const app = createApp({
       exportCsv(summaryResults.value, trip, t);
     }
 
+    const whatsappText = ref('');
+    const showWhatsappText = ref(false);
+
+    function formatDate(isoDate) {
+      if (!isoDate) return '';
+      const [y, m, d] = isoDate.split('-');
+      return `${d}.${m}.${y}`;
+    }
+
+    function doExportText() {
+      const lines = [];
+      const name = trip.name || t('untitled');
+      lines.push(`${name} — ${formatDate(trip.date)}`);
+
+      if (trip.legs.length > 0) {
+        lines.push('');
+        lines.push(t('tripLegs'));
+        for (const leg of trip.legs) {
+          const from = leg.fromText || '?';
+          const to = leg.toText || '?';
+          const kmRt = legKmTotal(leg);
+          const nCars = leg.cars.length;
+          const carWord = nCars === 1 ? t('carSingular') : t('carPlural');
+          const cost = legTotalCost(leg);
+          lines.push(`• ${from} → ${to} (${kmRt} km ${t('roundTrip')}) — ${nCars} ${carWord}, ${cost.toFixed(2)} CHF`);
+        }
+      }
+
+      if (trip.expenses.length > 0) {
+        lines.push('');
+        lines.push(t('expenses'));
+        for (const exp of trip.expenses) {
+          const desc = exp.description || '?';
+          const payer = exp.paidById ? participantName(exp.paidById) : '?';
+          lines.push(`• ${desc}: ${(exp.amount || 0).toFixed(2)} CHF (${t('paidBy').toLowerCase()} ${payer})`);
+        }
+      }
+
+      lines.push('');
+      lines.push(t('summaryPerPerson'));
+      for (const p of trip.participants) {
+        const s = summaryResults.value[p.id];
+        if (!s) continue;
+
+        const roleTxt = p.role === 'leader' ? ` (${t('roleLeader')})` : p.role === 'deputy' ? ` (${t('roleDeputy')})` : '';
+        lines.push(`${p.name}${roleTxt}`);
+
+        const transportTxt = s.exemptTransport ? t('exemptTransport').toLowerCase() : `${s.transportShare.toFixed(2)} CHF`;
+        const expenseTxt = s.exemptExpenses ? t('exemptExpenses').toLowerCase() : `${s.expenseShare.toFixed(2)} CHF`;
+        lines.push(`  ${t('transportShare')}: ${transportTxt} · ${t('expenseShare')}: ${expenseTxt}`);
+
+        let balanceTxt;
+        if (Math.abs(s.balance) <= 0.01) {
+          balanceTxt = t('settled');
+        } else if (s.balance > 0) {
+          balanceTxt = `${t('owes')} ${s.balance.toFixed(2)} CHF`;
+        } else {
+          balanceTxt = `${t('getsBack')} ${Math.abs(s.balance).toFixed(2)} CHF`;
+        }
+        lines.push(`  ${t('paid')}: ${s.totalPaid.toFixed(2)} CHF · ${t('balance')}: ${balanceTxt}`);
+      }
+
+      if (transfers.value.length > 0) {
+        lines.push('');
+        lines.push(t('suggestedTransfers'));
+        for (const tr of transfers.value) {
+          lines.push(`• ${tr.fromName} → ${tr.toName}: ${tr.amount.toFixed(2)} CHF`);
+        }
+      }
+
+      lines.push('');
+      lines.push(`${t('totalTransport')}: ${totalTransport.value.toFixed(2)} CHF`);
+      lines.push(`${t('totalExpenses')}: ${totalExpenses.value.toFixed(2)} CHF`);
+      lines.push(`Total: ${(totalTransport.value + totalExpenses.value).toFixed(2)} CHF`);
+
+      whatsappText.value = lines.join('\n');
+      showWhatsappText.value = true;
+    }
+
+    async function copyWhatsappText() {
+      try {
+        await navigator.clipboard.writeText(whatsappText.value);
+        showToast(t('copied'));
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = whatsappText.value;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast(t('copied'));
+      }
+    }
+
     async function doExportImage() {
       const el = document.getElementById('summary-capture');
       if (!el) return;
@@ -398,6 +492,7 @@ const app = createApp({
       selectAllForExpense, selectNoneForExpense, expensePerPerson,
       summaryResults, transfers, totalTransport, totalExpenses,
       doExportCsv, doExportImage,
+      doExportText, copyWhatsappText, whatsappText, showWhatsappText,
       savedTrips, showTripsPanel, doSaveTrip, doLoadTrip, doDeleteTrip, doNewTrip,
       toastMessage,
       apiKeyInput, hasApiKey, configHasApiKey, saveApiKey, removeApiKey,

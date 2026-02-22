@@ -462,8 +462,17 @@
     <!-- Export buttons -->
     <div class="card">
       <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-        <button class="btn btn-primary" @click="doExportCsv">{{ t('exportCsv') }}</button>
+        <button class="btn btn-primary" @click="doExportText">{{ t('exportText') }}</button>
         <button class="btn btn-primary" @click="doExportImage">{{ t('exportImage') }}</button>
+        <button class="btn btn-primary" @click="doExportCsv">{{ t('exportCsv') }}</button>
+      </div>
+
+      <div v-if="showWhatsappText" class="text-export-box">
+        <div class="text-export-header">
+          <button class="btn btn-sm btn-success" @click="copyWhatsappText">{{ t('copyToClipboard') }}</button>
+          <button class="btn btn-sm btn-ghost" @click="showWhatsappText = false">✕</button>
+        </div>
+        <pre class="text-export-content">{{ whatsappText }}</pre>
       </div>
     </div>
 

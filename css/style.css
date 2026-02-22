@@ -482,6 +482,36 @@ select {
 /* Info text */
 .info-text { font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
 
+/* Text export box */
+.text-export-box {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.text-export-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: #f1f5f9;
+  border-bottom: 1px solid var(--border);
+}
+
+.text-export-content {
+  padding: 0.75rem;
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text);
+  max-height: 400px;
+  overflow-y: auto;
+}
 /* Cost display inline */
 .cost-display {
   font-size: 0.85rem;
