@@ -81,7 +81,7 @@
     </div>
 
     <div class="card">
-      <div class="card-title">{{ t('participants') }}</div>
+      <div class="card-title">{{ t('participants') }} ({{ trip.participants.length }})</div>
 
       <div class="form-row" style="margin-bottom:1rem">
         <div class="form-group">
@@ -112,7 +112,10 @@
         >
           {{ t(p.role === 'leader' ? 'roleLeader' : p.role === 'deputy' ? 'roleDeputy' : 'roleNormal') }}
         </span>
-        <label v-if="p.role === 'leader' || p.role === 'deputy'" class="checkbox-label btn-sm" :class="{ checked: p.exemptTransport }" style="font-size:0.75rem">
+        <label v-if="p.role === 'leader'" class="checkbox-label btn-sm checked" style="font-size:0.75rem">
+          <input type="checkbox" checked disabled> {{ t('exemptTransportToggle') }}
+        </label>
+        <label v-else-if="p.role === 'deputy'" class="checkbox-label btn-sm" :class="{ checked: p.exemptTransport }" style="font-size:0.75rem">
           <input type="checkbox" v-model="p.exemptTransport"> {{ t('exemptTransportToggle') }}
         </label>
         <label v-if="p.role === 'leader' || p.role === 'deputy'" class="checkbox-label btn-sm" :class="{ checked: p.exemptExpenses }" style="font-size:0.75rem">
@@ -369,7 +372,7 @@
   <div v-show="currentStep === 4">
     <div id="summary-capture">
       <div class="card">
-        <div class="card-title">{{ t('summary') }} — {{ trip.name || t('untitled') }} ({{ trip.date }})</div>
+        <div class="card-title">{{ t('summary') }} — {{ trip.name || t('untitled') }} ({{ trip.date }}) · {{ trip.participants.length }} {{ t('participants').toLowerCase() }}</div>
 
         <div style="overflow-x:auto">
           <table class="summary-table">
@@ -431,6 +434,10 @@
         </div>
 
         <div class="totals-bar">
+          <span>
+            <span class="total-label">{{ t('pricePerKm') }}:</span>
+            <span class="total-value"> {{ transportMetrics.pricePerKm.toFixed(3) }} CHF/km</span>
+          </span>
           <span>
             <span class="total-label">{{ t('totalTransport') }}:</span>
             <span class="total-value"> {{ totalTransport.toFixed(2) }} CHF</span>

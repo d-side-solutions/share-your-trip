@@ -1,6 +1,6 @@
 import { createI18n } from './i18n.js';
 import { createRoutingService } from './routing.js';
-import { computeSummary, computeTransfers } from './calculator.js';
+import { computeSummary, computeTransfers, computeTransportMetrics } from './calculator.js';
 import {
   saveCurrentTrip, loadCurrentTrip, saveTripToList,
   loadTrips, deleteTripFromList, exportCsv
@@ -117,8 +117,10 @@ const app = createApp({
       const roles = ['normal', 'leader', 'deputy'];
       const idx = roles.indexOf(participant.role);
       participant.role = roles[(idx + 1) % roles.length];
-      if (participant.role === 'leader' || participant.role === 'deputy') {
+      if (participant.role === 'leader') {
         participant.exemptTransport = true;
+      } else if (participant.role === 'deputy') {
+        participant.exemptTransport = false;
       } else {
         participant.exemptTransport = false;
         participant.exemptExpenses = false;
@@ -278,6 +280,7 @@ const app = createApp({
     // --- STEP 4: Summary ---
     const summaryResults = computed(() => computeSummary(trip));
     const transfers = computed(() => computeTransfers(summaryResults.value));
+    const transportMetrics = computed(() => computeTransportMetrics(trip));
 
     const totalTransport = computed(() => {
       let total = 0;
@@ -491,6 +494,7 @@ const app = createApp({
       addExpense, removeExpense, toggleExpenseParticipant,
       selectAllForExpense, selectNoneForExpense, expensePerPerson,
       summaryResults, transfers, totalTransport, totalExpenses,
+      transportMetrics,
       doExportCsv, doExportImage,
       doExportText, copyWhatsappText, whatsappText, showWhatsappText,
       savedTrips, showTripsPanel, doSaveTrip, doLoadTrip, doDeleteTrip, doNewTrip,
