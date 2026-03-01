@@ -1,3 +1,64 @@
+function collectLegParticipantIds(leg, results) {
+  const ids = new Set();
+  for (const car of leg.cars) {
+    if (car.driverId && results[car.driverId]) {
+      ids.add(car.driverId);
+    }
+    for (const passId of car.passengerIds) {
+      if (results[passId]) {
+        ids.add(passId);
+      }
+    }
+  }
+  return ids;
+}
+
+function computeTransportMetrics(trip) {
+  const participantById = {};
+  for (const p of trip.participants) {
+    participantById[p.id] = p;
+  }
+
+  let totalTransportCost = 0;
+  let totalParticipantKm = 0;
+
+  for (const leg of trip.legs) {
+    const kmTotal = (leg.kmOneWay || 0) * 2;
+    const assignedIds = new Set();
+    let legCost = 0;
+
+    for (const car of leg.cars) {
+      const rate = car.is6Plus ? car.rate6Plus : car.rateNormal;
+      legCost += kmTotal * rate;
+
+      if (car.driverId && participantById[car.driverId]) {
+        assignedIds.add(car.driverId);
+      }
+      for (const passId of car.passengerIds) {
+        if (participantById[passId]) {
+          assignedIds.add(passId);
+        }
+      }
+    }
+
+    const payingCount = [...assignedIds].filter(id => {
+      const p = participantById[id];
+      if (!p) return false;
+      // Leaders are always exempt from transport pricing.
+      return p.role !== 'leader' && !p.exemptTransport;
+    }).length;
+
+    totalTransportCost += legCost;
+    totalParticipantKm += kmTotal * payingCount;
+  }
+
+  return {
+    totalTransportCost,
+    totalParticipantKm,
+    pricePerKm: totalParticipantKm > 0 ? totalTransportCost / totalParticipantKm : 0,
+  };
+}
+
 function computeSummary(trip) {
   const results = {};
 
@@ -10,41 +71,39 @@ function computeSummary(trip) {
       totalOwed: 0,
       totalPaid: 0,
       balance: 0,
-      exemptTransport: !!p.exemptTransport,
+      exemptTransport: p.role === 'leader' ? true : !!p.exemptTransport,
       exemptExpenses: !!p.exemptExpenses,
     };
   }
 
+  const transportMetrics = computeTransportMetrics(trip);
+  const pricePerKm = transportMetrics.pricePerKm;
+  const legPayingMap = new Map();
+
   for (const leg of trip.legs) {
     const kmTotal = (leg.kmOneWay || 0) * 2;
-
-    const allParticipantIds = new Set();
-    let totalLegCost = 0;
+    const allParticipantIds = collectLegParticipantIds(leg, results);
 
     for (const car of leg.cars) {
       const rate = car.is6Plus ? car.rate6Plus : car.rateNormal;
       const carCost = kmTotal * rate;
-      totalLegCost += carCost;
 
       if (car.driverId && results[car.driverId]) {
         results[car.driverId].totalPaid += carCost;
-        allParticipantIds.add(car.driverId);
-      }
-
-      for (const passId of car.passengerIds) {
-        allParticipantIds.add(passId);
       }
     }
 
     const payingIds = [...allParticipantIds].filter(id => {
       const r = results[id];
-      return r && !r.exemptTransport;
+      return r && r.role !== 'leader' && !r.exemptTransport;
     });
+    legPayingMap.set(leg.id, { kmTotal, payingIds });
+  }
 
-    if (payingIds.length > 0 && totalLegCost > 0) {
-      const costPerPerson = totalLegCost / payingIds.length;
+  if (pricePerKm > 0) {
+    for (const { kmTotal, payingIds } of legPayingMap.values()) {
       for (const id of payingIds) {
-        results[id].transportShare += costPerPerson;
+        results[id].transportShare += kmTotal * pricePerKm;
       }
     }
   }
@@ -120,4 +179,4 @@ function computeTransfers(summaryResults) {
   return transfers;
 }
 
-export { computeSummary, computeTransfers };
+export { computeSummary, computeTransfers, computeTransportMetrics };
